@@ -3,7 +3,7 @@ name: Quiz application
 on:
   pull_request:
     branches: 
-      - master
+      - main
 
 
 jobs:
@@ -141,3 +141,5 @@ jobs:
           git commit -am "Update image for - ${{ github.sha }} [skip ci]"
       - run: echo ${{ github }}
       - run: git push origin master
+
+
