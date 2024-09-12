@@ -1,4 +1,4 @@
-name: Quiz application  
+name: Quiz applications
 
 on:  
   pull_request:  
