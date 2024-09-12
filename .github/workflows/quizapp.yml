@@ -1,9 +1,6 @@
-name: CI/CD Pipeline
+name: Quiz application
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -11,137 +8,106 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8 pytest pytest-cov
-          pip install -r backend/requirements.txt
-
-      - name: Lint with flake8
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-        working-directory: ./backend
-
-      - name: Setup SonarQube
-        uses: warchant/setup-sonar-scanner@v8
-
-      - name: SonarQube Scan
-        run: |
-          sonar-scanner \
-            -Dsonar.host.url=${{ secrets.SONAR_URL }} \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
-            -Dsonar.sources=backend/
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5.0.0
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest pytest-cov
+        pip install -r backend/requirements.txt
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      working-directory: ./backend
+    - name: Setup SonarQube
+      uses: warchant/setup-sonar-scanner@v8
+    - name: SonarQube Scan
+      run: |
+        sonar-scanner \
+          -Dsonar.host.url=${{ secrets.SONAR_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+          -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+          -Dsonar.sources=backend/
 
   build-backend:
     needs: test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Build and push backend Docker image
-        working-directory: ./backend
-        run: |
-          docker build . -t ${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          docker push ${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+    - uses: actions/checkout@v4
+    - name: Build and push backend Docker image
+      working-directory: ./backend
+      run: |
+        docker build . -t ${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push ${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
 
   build-frontend:
     needs: test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Build and push frontend Docker image
-        working-directory: ./frontend
-        run: |
-          docker build . -t ${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          docker push ${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+    - uses: actions/checkout@v4
+    - name: Build and push frontend Docker image
+      working-directory: ./frontend
+      run: |
+        docker build . -t ${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push ${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
 
   build-database:
     needs: test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Build and push database Docker image
-        working-directory: ./database
-        run: |
-          docker build . -t ${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-          docker push ${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+    - uses: actions/checkout@v4
+    - name: Build and push database Docker image
+      working-directory: ./database
+      run: |
+        docker build . -t ${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push ${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
 
   update-manifest-files:
     needs: [build-frontend, build-backend, build-database]
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-        with:
-          repository: iam-suryaprasad/Kubernetes-DevSecOps-CI-CD-Project
-          ref: 'main'
-          token: ${{ secrets.PAT_GITHUB_TOKEN }}
-
-      - name: Setup git config
-        run: |
-          git config --global user.email "${{ secrets.GIT_EMAIL }}"
-          git config --global user.name "${{ secrets.GIT_USERNAME }}"
-
-      - name: Update Backend Image in Deployment Manifest
-        run: |
-          sed -i "s#${{ secrets.DOCKER_USERNAME }}/backend:.*#${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}#g" kubernetes-manifest/backend/deployment.yaml
-
-      - name: Update Frontend Image in Deployment Manifest
-        run: |
-          sed -i "s#${{ secrets.DOCKER_USERNAME }}/frontend:.*#${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}#g" kubernetes-manifest/frontend/deployment.yaml
-
-      - name: Update Database Image in Kubernetes Job Manifest
-        run: |
-          sed -i "s#${{ secrets.DOCKER_USERNAME }}/database:.*#${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}#g" kubernetes-manifest/database/job.yaml
-
-      - name: Commit and Push changes
-        run: |
-          git add -A
-          git commit -m "Update images for commit ${{ github.sha }} [skip ci]"
-          git push origin main
+    - uses: actions/checkout@v4
+      with:
+        repository: iam-suryaprasad/Kubernetes-DevSecOps-CI-CD-Project
+        ref: 'main'
+        token: ${{ secrets.PAT_GITHUB_TOKEN }}
+    - name: Setup git config
+      run: |
+        git config --global user.email "${{ secrets.GIT_EMAIL }}"
+        git config --global user.name "${{ secrets.GIT_USERNAME }}"
+    - name: Update Kubernetes manifests
+      run: |
+        sed -i "s#${{ secrets.DOCKER_USERNAME }}/backend:.*#${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}#g" kubernetes-manifest/backend/deployment.yaml
+        sed -i "s#${{ secrets.DOCKER_USERNAME }}/frontend:.*#${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}#g" kubernetes-manifest/frontend/deployment.yaml
+        sed -i "s#${{ secrets.DOCKER_USERNAME }}/database:.*#${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}#g" kubernetes-manifest/database/job.yaml
+        git add -A
+        git commit -m "Update image for - ${{ github.sha }} [skip ci]"
+    - name: Push changes
+      run: git push origin main
