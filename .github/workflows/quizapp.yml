@@ -1,22 +1,21 @@
-name: Quiz application
+name: Quizapplication
 
 on:
   pull_request:
     branches: 
       - main
 
-
 jobs:
   test:
-
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v5.0.0
-
       with:
         python-version: "3.11"
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -25,35 +24,21 @@ jobs:
 
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       working-directory: ./backend
-    
-      # Setup sonar-scanner
+
     - name: Setup SonarQube
       uses: warchant/setup-sonar-scanner@v8
 
-      # Run sonar-scanner
     - name: SonarQube Scan
-      run: sonar-scanner
-         -Dsonar.host.url=${{ secrets.SONAR_URL }}
-         -Dsonar.login=${{ secrets.SONAR_TOKEN }}
-         -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-         -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-         -Dsonar.sources=backend/
-
-    #   # Check the Quality Gate status.
-    # - name: SonarQube Quality Gate check
-    #   id: sonarqube-quality-gate-check
-    #   uses: sonarsource/sonarqube-quality-gate-action@master
-    #     # Force to fail step after specific time.
-    #   timeout-minutes: 5
-    #   env:
-    #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    #     SONAR_HOST_URL: ${{ secrets.SONAR_URL }} #OPTIONAL
-
+      run: |
+        sonar-scanner \
+          -Dsonar.host.url=${{ secrets.SONAR_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+          -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+          -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+          -Dsonar.sources=backend/
 
   build-backend:
     needs: test
@@ -61,7 +46,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build and push backend Docker image
-      working-directory: .
+      working-directory: ./backend
       run: |
         docker build . -t ${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}
         echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
@@ -72,7 +57,7 @@ jobs:
       with:
         image-ref: 'docker.io/${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}'
         format: 'sarif'
-        output: 'trivy-results.sarif'       
+        output: 'trivy-results.sarif'
 
   build-frontend:
     needs: test
@@ -116,27 +101,24 @@ jobs:
     needs: [build-frontend, build-backend, build-database]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: iam-suryaprasad/Kubernetes-DevSecOps-CI-CD-Project
-          ref: 'master'
-          token: ${{ secrets.PAT_GITHUB_TOKEN}}
-      - name: setup git config
-        run: |
-          git config --global user.email "${{ secrets.GIT_EMAIL }}"
-          git config --global user.name "${{ secrets.GIT_USERNAME }}"
-          echo ${{ github.sha }}
+    - uses: actions/checkout@v4
+      with:
+        repository: iam-suryaprasad/Kubernetes-DevSecOps-CI-CD-Project
+        ref: 'master'
+        token: ${{ secrets.PAT_GITHUB_TOKEN }}
+        
+    - name: Setup git config
+      run: |
+        git config --global user.email "${{ secrets.GIT_EMAIL }}"
+        git config --global user.name "${{ secrets.GIT_USERNAME }}"
 
-          # Update Backend Image in Deployment Manifest
-          sed -i "s#${{ secrets.DOCKER_USERNAME }}.*#${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}#g" kubernetes-manifest/backend/deployment.yaml
+    - name: Update Backend Image in Deployment Manifest
+      run: |
+        sed -i "s#${{ secrets.DOCKER_USERNAME }}.*#${{ secrets.DOCKER_USERNAME }}/backend:${{ github.sha }}#g" kubernetes-manifest/backend/deployment.yaml
+        sed -i "s#${{ secrets.DOCKER_USERNAME }}.*#${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}#g" kubernetes-manifest/frontend/deployment.yaml
+        sed -i "s#${{ secrets.DOCKER_USERNAME }}.*#${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}#g" kubernetes-manifest/database/job.yaml
+        git add -A
+        git commit -am "Update image for - ${{ github.sha }} [skip ci]"
 
-          # Update Frontend Image in Deployment Manifest
-          sed -i "s#${{ secrets.DOCKER_USERNAME }}.*#${{ secrets.DOCKER_USERNAME }}/frontend:${{ github.sha }}#g" kubernetes-manifest/frontend/deployment.yaml
-          
-          # Update Database Image in Kubernetes Job Manifest
-          sed -i "s#${{ secrets.DOCKER_USERNAME }}.*#${{ secrets.DOCKER_USERNAME }}/database:${{ github.sha }}#g" kubernetes-manifest/database/job.yaml
-          
-          git add -A
-          git commit -am "Update image for - ${{ github.sha }} [skip ci]"
-      - run: echo ${{ github }}
-      - run: git push origin main
+    - name: Push updated manifests
+      run: git push origin main
