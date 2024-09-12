@@ -119,7 +119,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: 
+          repository: iam-suryaprasad/Kubernetes-DevSecOps-CI-CD-Project-master
           ref: 'main'
           token: ${{ secrets.PAT_GITHUB_TOKEN}}
       - name: setup git config
