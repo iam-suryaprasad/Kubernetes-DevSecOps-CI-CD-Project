@@ -23,6 +23,6 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: suryaprasad9773/frontend:latest
+        image: suryaprasad9773/frontend:843f4d89a279cde499d704286df7d598405b4fc8
         ports:
         - containerPort: 80
