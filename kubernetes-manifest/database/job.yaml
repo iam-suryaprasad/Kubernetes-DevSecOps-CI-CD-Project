@@ -8,7 +8,7 @@ spec:
     spec:
       containers:
         - name: mongo-init
-          image: suryaprasad9773/database:v1
+          image: suryaprasad9773/database:latest
           env:
             - name: MONGO_HOST
               value: "mongodb-svc"
