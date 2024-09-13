@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: suryaprasad9773/backend:843f4d89a279cde499d704286df7d598405b4fc8
+          image: suryaprasad9773/backend:42158ca836601733d650bc9531c45df85fb8f5df
           imagePullPolicy: IfNotPresent 
           env:
             - name: MONGO_CONN_STR
