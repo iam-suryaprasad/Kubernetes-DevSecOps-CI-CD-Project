@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - host: quizapp.suryaprasad.xyz
+    - host: www.suryaprasad.xyz
       http:
         paths:
           - path: /api
